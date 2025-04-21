@@ -78,12 +78,11 @@ ToggByte		 EQU  0x27      ; Define a byte to determine toggle low or high
 ;  PROGRAMME CODE
 ;------------------------------------------------------------------
 PSECT code, abs
- 
-ResVctr:
+    ORG 0x0000
     goto	start			;
     
-    ORG 0x0004
-
+    ORG 0x0004 ;interrupts will direct here
+    goto Main_Loop
 start:
     clrw                       		;Processor Reset vector
     BANKSEL (OSCFRQ)
@@ -112,9 +111,14 @@ start:
     bcf     OUTPUT_LED                  ; Init LED output off
 ;    movlw   0xff			; 
 ;    movwf   PORTC			; Init button inputs to 1    
-
-    
-
+    BANKSEL(IOCCN)
+    movlw 0x3E
+    movwf IOCCN				;Interrupt-on-change enabled on the IOCC pins for a negative-going edge
+    BANKSEL(PIE0)
+    bsf PIE0,4
+    BANKSEL(INTCON)
+    bsf INTCON, 7
+    bsf INTCON, 6
 
     ; *** SET UP PULL-UPS ON PORT C??? ***
 
@@ -302,7 +306,8 @@ inpup_action:
     movwf   ToggByte            ; Send Toggle=1 for button released
     call    SendRC5             ; Send button released.
 skip_inpup:
-
+    SLEEP
+    nop
     goto Main_Loop               ; forever run in loop
 
 
