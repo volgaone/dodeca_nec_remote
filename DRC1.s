@@ -78,11 +78,12 @@ ToggByte		 EQU  0x27      ; Define a byte to determine toggle low or high
 ;  PROGRAMME CODE
 ;------------------------------------------------------------------
 PSECT code, abs
-    ORG 0x0000
-    goto	start			;
-    
-    ORG 0x0004 ;interrupts will direct here
-    goto Main_Loop
+  
+ ResVctr:
+     goto	start			;
+     
+     ORG 0x0004		;
+
 start:
     clrw                       		;Processor Reset vector
     BANKSEL (OSCFRQ)
