@@ -117,7 +117,6 @@ start:
     BANKSEL(PIE0)
     bsf PIE0,4
     BANKSEL(INTCON)
-    bsf INTCON, 7
     bsf INTCON, 6
 
     ; *** SET UP PULL-UPS ON PORT C??? ***
