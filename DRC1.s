@@ -569,29 +569,6 @@ CarrierLoopZero:
 
     return                      ; -2
 
-;
-;*********************************************************************************
-;--------------------------------------------------------------------
-;
-;   Attesa di 10ms
-;
-;--------------------------------------------------------------------
-
-wait_10ms:
-    call    save_registers		;
-    BANKSEL(wctr0)			;
-    clrf    wctr0			;
-    movlw   25
-    movwf    wctr1			;
-wait_10ms_loop:
-    decfsz  wctr0,F			;
-    goto    wait_10ms_loop		;
-    decfsz  wctr1,F			;
-    goto    wait_10ms_loop		;
-    call    restore_registers		;
-    return				;
-
-
 
 ;--------------------------------------------------------------------
 ;
