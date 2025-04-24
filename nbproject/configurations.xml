@@ -50,7 +50,7 @@
         </archiverTool>
         <loading>
           <useAlternateLoadableFile>false</useAlternateLoadableFile>
-          <parseOnProdLoad>true</parseOnProdLoad>
+          <parseOnProdLoad>false</parseOnProdLoad>
           <alternateLoadableFile></alternateLoadableFile>
         </loading>
         <subordinates>
@@ -535,7 +535,7 @@
       </Simulator>
       <Tool>
         <property key="AutoSelectMemRanges" value="auto"/>
-        <property key="Freeze Peripherals" value="true"/>
+        <property key="Freeze Peripherals" value="false"/>
         <property key="SecureSegment.SegmentProgramming" value="FullChipProgramming"/>
         <property key="ToolFirmwareFilePath"
                   value="Press to browse for a specific firmware version"/>
@@ -591,11 +591,13 @@
         <property key="periphComp4.gte" value="gt"/>
         <property key="periphComp5.gte" value="gt"/>
         <property key="periphComp6.gte" value="gt"/>
-        <property key="poweroptions.powerenable" value="false"/>
+        <property key="poweroptions.powerenable" value="true"/>
+        <property key="programmerToGoFilePath"
+                  value="C:/Users/dignatyev/OneDrive - AD Aerospace Ltd/dodeca_rc5_asm.X/debug/default/DRC1_ptg"/>
         <property key="programmerToGoImageName" value="DRC1_ptg"/>
         <property key="programoptions.donoteraseauxmem" value="false"/>
         <property key="programoptions.eraseb4program" value="true"/>
-        <property key="programoptions.ledbrightness" value="5"/>
+        <property key="programoptions.ledbrightness" value="8"/>
         <property key="programoptions.pgcconfig" value="pull down"/>
         <property key="programoptions.pgcresistor.value" value="4.7"/>
         <property key="programoptions.pgdconfig" value="pull down"/>
@@ -693,7 +695,7 @@
         <property key="usartf1io.output" value="window"/>
         <property key="usartf1io.outputfile" value=""/>
         <property key="usartf1io.uartioenabled" value="false"/>
-        <property key="voltagevalue" value="5.0"/>
+        <property key="voltagevalue" value="3"/>
         <property key="warningmessagebreakoptions.W0001_CORE_BITREV_MODULO_EN"
                   value="report"/>
         <property key="warningmessagebreakoptions.W0002_CORE_SECURE_MEMORYACCESS"
@@ -1108,7 +1110,7 @@
       </pic-as-linker>
       <pk4hybrid>
         <property key="AutoSelectMemRanges" value="auto"/>
-        <property key="Freeze Peripherals" value="true"/>
+        <property key="Freeze Peripherals" value="false"/>
         <property key="SecureSegment.SegmentProgramming" value="FullChipProgramming"/>
         <property key="ToolFirmwareFilePath"
                   value="Press to browse for a specific firmware version"/>
@@ -1142,11 +1144,11 @@
                   value="${memories.instruction.ram.ranges}"/>
         <property key="memories.programmemory" value="true"/>
         <property key="memories.programmemory.ranges" value="0-1fff"/>
-        <property key="poweroptions.powerenable" value="false"/>
+        <property key="poweroptions.powerenable" value="true"/>
         <property key="programmerToGoImageName" value="DRC1_ptg"/>
         <property key="programoptions.donoteraseauxmem" value="false"/>
         <property key="programoptions.eraseb4program" value="true"/>
-        <property key="programoptions.ledbrightness" value="5"/>
+        <property key="programoptions.ledbrightness" value="8"/>
         <property key="programoptions.pgcconfig" value="pull down"/>
         <property key="programoptions.pgcresistor.value" value="4.7"/>
         <property key="programoptions.pgdconfig" value="pull down"/>
@@ -1172,7 +1174,7 @@
                   value="toolpack.updateoptions.uselatestoolpack"/>
         <property key="toolpack.updateoptions.packversion"
                   value="Press to select which tool pack to use"/>
-        <property key="voltagevalue" value="5.0"/>
+        <property key="voltagevalue" value="3"/>
       </pk4hybrid>
     </conf>
   </confs>
