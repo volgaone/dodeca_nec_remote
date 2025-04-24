@@ -98,8 +98,10 @@ start:
     BANKSEL(TRISA)			;
     movlw   0xFB			; Port A 2 is the LED output
     movwf   TRISA			;
-    movlw   0xFF			; Port C all inputs
+    movlw   0xFE			; Port C all inputs, except RC0 which is output - we'll use it for debug
     movwf   TRISC			; 
+    BANKSEL(PORTC)
+    bcf PORTC, 0   
     BANKSEL (WPUC)			;
     movlw   0x3F			;
     movwf   WPUC			; Enable weak pull-ups on RC0-RC5 (buttons)
@@ -111,9 +113,9 @@ start:
     movlw 0x3E
     movwf IOCCN				;Interrupt-on-change enabled on the IOCC pins for a negative-going edge
     BANKSEL(PIE0)
-    bsf PIE0,4
+    bsf PIE0,4				;Interrupt-on-Change Enable
     BANKSEL(INTCON)
-    bsf INTCON, 6
+    bsf INTCON, 6			;PEIE Peripheral Interrupt Enable
 
 
 
@@ -299,8 +301,15 @@ inpup_action:
     movwf   ToggByte            ; Send Toggle=1 for button released
     call    SendRC5             ; Send button released.
 skip_inpup:
+    BANKSEL(IOCCF)
+    movlw 0x0
+    movwf IOCCF			 ; clear any pending IOC flags for PORTC, so that they don't wake us up from sleep
+    
+    BANKSEL(PORTC)
+    bsf PORTC, 0		 ;set RC0 just as we go into sleep so that we can observe it 
     SLEEP
     nop
+    bcf PORTC, 0
     goto Main_Loop               ; forever run in loop
 
 
