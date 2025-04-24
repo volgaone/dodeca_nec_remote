@@ -105,13 +105,8 @@ start:
     movwf   WPUC			; Enable weak pull-ups on RC0-RC5 (buttons)
 
     BANKSEL(PORTA)
-;    movlw   0xFB			;
-;    movwf   PORTA			;
-;    movlw   0xff			;
-;    movwf   PORTC			;
     bcf     OUTPUT_LED                  ; Init LED output off
-;    movlw   0xff			; 
-;    movwf   PORTC			; Init button inputs to 1    
+   
     BANKSEL(IOCCN)
     movlw 0x3E
     movwf IOCCN				;Interrupt-on-change enabled on the IOCC pins for a negative-going edge
@@ -119,8 +114,6 @@ start:
     bsf PIE0,4
     BANKSEL(INTCON)
     bsf INTCON, 6
-
-    ; *** SET UP PULL-UPS ON PORT C??? ***
 
 
 
