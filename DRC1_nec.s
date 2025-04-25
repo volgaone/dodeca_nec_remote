@@ -40,6 +40,8 @@
   CONFIG  WRTAPP = 0x01             	; Flash Memory Self-Write Protection (Write protection off)
   
   
+ ZERO_BIT EQU 2				; in STATUS register
+  
 ; System Outputs    
 #define OUTPUT_LED	 PORTA,2	;Output to IR LED
 
@@ -51,12 +53,14 @@
 #define BTTN_INPUP       PORTC,5	;Input from SW1
 
 ; Constants
-SYS_PRE			 EQU 0x13       ; RC5 system address for Preamp device
-MUTE_CMD		 EQU 0x0D       ; Command value for RC5 Data Mute
-INPUP_CMD		 EQU 0x20       ; Command value for RC5 Data Input Up
-INPDOWN_CMD		 EQU 0x21       ; Command value for RC5 Data Input Down
-VOLUP_CMD		 EQU 0x10    	; Command value for RC5 Data Volume up
-VOLDOWN_CMD		 EQU 0x11       ; Command value for RC5 Data Volume down
+SYS_ADDRESS		 EQU 0x89       ; device address
+MUTE_CMD		 EQU 0x1B       ; short button press
+POWER_CMD		 EQU 0xBF
+INP1_CMD		 EQU 0xE6       ; Command value for RC5 Data Input Up
+INP2_CMD		 EQU 0xE7       ; Command value for RC5 Data Input Down
+INP3_CMD		 EQU 0xEF
+VOLUP_CMD		 EQU 0xE9    	; Command value for RC5 Data Volume up
+VOLDOWN_CMD		 EQU 0xE5       ; Command value for RC5 Data Volume down
 		 
 ; Variables
 wctr2			 EQU 0x20
@@ -73,7 +77,8 @@ DataByte		 EQU  0x25      ; Define a byte to use for RC5 Data
 AddrByte		 EQU  0x26      ; Define a byte to use for RC5 address
 ToggByte		 EQU  0x27      ; Define a byte to determine toggle low or high
 BitCount		 EQU  0x28      ; holds a bit counter as we iterate thru bits in a byte 
-		 ;C			 EQU  0x00     
+NEC_byte		 EQU  0x29	; holds the byte to be sent over NEC protocol
+Input			 EQU  0x2A      ; current input; can be 1, 2 or 3 (corresponding to INPx_CMD)
 
 ;------------------------------------------------------------------
 ;  PROGRAMME CODE
@@ -118,15 +123,9 @@ start:
     BANKSEL(INTCON)
     bsf INTCON, 6			;PEIE Peripheral Interrupt Enable
    
-    
-    repeat:
-    call Send9msLeadingPulse
-    call Delay4_5msSpace
-    call NECSendZero
-    call NECSendOne
-    call Send562usEndBurst
-    goto repeat
-
+    BANKSEL(Input)
+    movlw INP1_CMD
+    movwf Input                         ;set a default value for the Input
 
 Main_Loop:
     
@@ -143,25 +142,15 @@ Main_Loop:
     ;
     ; Repeatedly send RC5 transmission with toggle bit = 0.
 voldown_action:
-    movlw   SYS_PRE
+    movlw   SYS_ADDRESS
     movwf   AddrByte            ; Load Device Address
     movlw   VOLDOWN_CMD
     movwf   DataByte            ; Load Data byte with command
-    movlw   0x00
-    movwf   ToggByte            ; Send Toggle=0 for button down.
 
-    call    SendRC5
+    call    SendNECCommand
     btfss   BTTN_VOLDOWN        ; On button release, send one toggle+
     goto    voldown_action      ; Keep sending RC5 code while bttn down
-
-    ; Send a final transmission with toggle bit = 1.
-    movlw   SYS_PRE
-    movwf   AddrByte            ; Load Device Address
-    movlw   0x00 ;VOLDOWN_CMD         
-    movwf   DataByte            ; Load Data byte with command
-    movlw   0xFF
-    movwf   ToggByte            ; Send Toggle=1 for button released
-    call    SendRC5             ; Send button released.
+    
 skip_voldown:
 
 
@@ -180,25 +169,15 @@ skip_voldown:
     ;
     ; Repeatedly send RC5 transmission with toggle bit = 0.
 volup_action:
-    movlw   SYS_PRE
+    movlw   SYS_ADDRESS
     movwf   AddrByte            ; Load Device Address
     movlw   VOLUP_CMD           
     movwf   DataByte            ; Load Data byte with command
-    movlw   0x00                
-    movwf   ToggByte            ; Send Toggle=0 for button down.
-    
-    call    SendRC5
+   
+    call    SendNECCommand
     btfss   BTTN_VOLUP          ; On button release, send one toggle+
     goto    volup_action        ; Keep sending RC5 code while bttn down
 
-    ; Send a final transmission with toggle bit = 1.
-    movlw   SYS_PRE     
-    movwf   AddrByte            ; Load Device Address
-    movlw   0x00 ;VOLUP_CMD
-    movwf   DataByte            ; Load Data byte with command
-    movlw   0xFF
-    movwf   ToggByte            ; Send Toggle=1 for button released
-    call    SendRC5             ; Send button released.
 skip_volup:
 
     ; MUTE BUTTON
@@ -216,25 +195,15 @@ skip_volup:
     ;
     ; Repeatedly send RC5 transmission with toggle bit = 0.
 mute_action:
-    movlw   SYS_PRE
+    movlw   SYS_ADDRESS
     movwf   AddrByte            ; Load Device Address
     movlw   MUTE_CMD           
     movwf   DataByte            ; Load Data byte with command
-    movlw   0x00                
-    movwf   ToggByte            ; Send Toggle=0 for button down.
     
-    call    SendRC5
+    call    SendNECCommand
     btfss   BTTN_MUTE          ; On button release, send one toggle+
     goto    mute_action        ; Keep sending RC5 code while bttn down
 
-    ; Send a final transmission with toggle bit = 1.
-    movlw   SYS_PRE     
-    movwf   AddrByte            ; Load Device Address
-    movlw   0x00 ;MUTE_CMD
-    movwf   DataByte            ; Load Data byte with command
-    movlw   0xFF
-    movwf   ToggByte            ; Send Toggle=1 for button released
-    call    SendRC5             ; Send button released.
 skip_mute:
 
 
@@ -247,31 +216,17 @@ skip_mute:
     btfsc   BTTN_INPDOWN        ; check if button is still down 
     goto    skip_inpdown        ; bttn is up, skip action code (false indicator)
 
-    ; Detected the button as pressed.  Send keydown code.
-
-    ; Button's Action Code
-    ;
-    ; Repeatedly send RC5 transmission with toggle bit = 0.
 inpdown_action:
-    movlw   SYS_PRE
+    movlw   SYS_ADDRESS
     movwf   AddrByte            ; Load Device Address
-    movlw   INPDOWN_CMD           
-    movwf   DataByte            ; Load Data byte with command
-    movlw   0x00                
-    movwf   ToggByte            ; Send Toggle=0 for button down.
+    call    decrement_input
+    movf    Input,W          
+    movwf   DataByte            ; Load Data byte with the new, changed input
     
-    call    SendRC5
+    call    SendNECCommand
     btfss   BTTN_INPDOWN          ; On button release, send one toggle+
     goto    inpdown_action        ; Keep sending RC5 code while bttn down
 
-    ; Send a final transmission with toggle bit = 1.
-    movlw   SYS_PRE     
-    movwf   AddrByte            ; Load Device Address
-    movlw   0x00 ;INPDOWN_CMD
-    movwf   DataByte            ; Load Data byte with command
-    movlw   0xFF
-    movwf   ToggByte            ; Send Toggle=1 for button released
-    call    SendRC5             ; Send button released.
 skip_inpdown:
 
 
@@ -284,31 +239,15 @@ skip_inpdown:
     btfsc   BTTN_INPUP          ; check if button is still down 
     goto    skip_inpup          ; bttn is up, skip action code (false indicator)
 
-    ; Detected the button as pressed.  Send keydown code.
-
-    ; Button's Action Code
-    ;
-    ; Repeatedly send RC5 transmission with toggle bit = 0.
 inpup_action:
-    movlw   SYS_PRE
+    movlw   SYS_ADDRESS
     movwf   AddrByte            ; Load Device Address
-    movlw   INPUP_CMD           
+    call    increment_input
+    movf    Input, W          
     movwf   DataByte            ; Load Data byte with command
-    movlw   0x00                
-    movwf   ToggByte            ; Send Toggle=0 for button down.
     
-    call    SendRC5
-    btfss   BTTN_INPUP          ; On button release, send one toggle+
-    goto    inpup_action        ; Keep sending RC5 code while bttn down
-
-    ; Send a final transmission with toggle bit = 1.
-    movlw   SYS_PRE     
-    movwf   AddrByte            ; Load Device Address
-    movlw   0x00 ;INPUP_CMD
-    movwf   DataByte            ; Load Data byte with command
-    movlw   0xFF
-    movwf   ToggByte            ; Send Toggle=1 for button released
-    call    SendRC5             ; Send button released.
+    call    SendNECCommand
+    btfss   BTTN_INPUP         ; Send button released.
 skip_inpup:
     BANKSEL(IOCCF)
     movlw 0x0
@@ -390,270 +329,92 @@ Delay4_5msSpace:
 
 
 SendNECbyte:
-
-    rlf     AddrByte, F     ; Shift out MSB.. C = MSB
+    movlw 8
+    movwf BitCount
+    NEC_bit:
+    rrf     NEC_byte, F     ; Shift out MSB.. C = MSB
     btfss   CARRY           ; if bit is 1, skip next instr.
-    call    SendZero        ; bit is 0, send a zero
+    call    NECSendZero        ; bit is 0, send a zero
     btfsc   CARRY
-    call    SendOne         ; bit is 1, send a one
-    
-
+    call    NECSendOne         ; bit is 1, send a one
+    decfsz  BitCount, F
+    goto NEC_bit
     return                      ; Return from SendRC5 routine    
+
+; takes arguments in AddrByte, DataByte
+SendNECCommand:
+    call Send9msLeadingPulse
+    call Delay4_5msSpace
+    ;  send 2 address bytes, second one being logical inverse of the first
+    movf AddrByte,W
+    movwf NEC_byte
+    call SendNECbyte
+    comf AddrByte, W //logical NOT on AddrByte, transfer to working register
+    movwf NEC_byte
+    call SendNECbyte
+    ;  send 2 data bytes, second one being logical inverse of the first
+    movf DataByte,W
+    movwf NEC_byte
+    call SendNECbyte
+    comf DataByte, W
+    movwf NEC_byte
+    call SendNECbyte
+    call Send562usEndBurst
+    ; insert 10ms delay between the commands
+    movlw 10
+    movwf Delay_Count2
+    extra_cmd_delay:
+    call delay_1ms
+    decfsz Delay_Count2,F
+    goto extra_cmd_delay 
+    return
     
-;******************************************************************
-;  SUB-ROUTINES
-;******************************************************************
-
-;------------------------------------------------------------------
-;  SendRC5
-;
-;       Before calling, preload registers DataByte and AddrByte with
-;   appropriate values to be sent.
-; 
-;   DataByte = 6 bits of data to send (upper 2 bits ignored)
-;   AddrByte = 5 bits of addr to identify target (upper 3 bits ignored)
-;------------------------------------------------------------------
-SendRC5:
-
-    ; Pre-shift Addr Byte
-    rlf     AddrByte, F     ; Must be rotated left 3 bits
-    rlf     AddrByte, F     ;
-    rlf     AddrByte, F     ; MSB now is MSB of 5 bit #
-    ; Pre-shift Data Byte
-    rlf     DataByte, F     ; Must be rotated left 2 bits
-    rlf     DataByte, F     ; MSB now is MSB of 6 bit #
-
-    ; SEND PREAMBLE
-    call    SendOne         ; S1        Start 1
-    call    SendOne         ; S2        Start 2
-
-    ; SEND TOGGLE
-    btfss   ToggByte, 0     ; if toggle is one, skip instr
-    call    SendZero        ; Send a 0, toggle byte is zero
-    btfsc   ToggByte, 0     ; 
-    call    SendOne         ; toggle byte is set, need to send a 1
-
-
-    ; SEND DATA IN SPEED EFFICIENT MANNER
-
-    ; SEND ADDRESS
-    ; Begin shifting out address
-    ; bit 4
-    rlf     AddrByte, F     ; Shift out MSB.. C = MSB
-    btfss   CARRY           ; if bit is 1, skip next instr.
-    call    SendZero        ; bit is 0, send a zero
-    btfsc   CARRY
-    call    SendOne         ; bit is 1, send a one
-    ; bit 3
-    rlf     AddrByte, F     ; Shift out MSB.. C = MSB
-    btfss   CARRY           ; if bit is 1, skip next instr.
-    call    SendZero        ; bit is 0, send a zero
-    btfsc   CARRY
-    call    SendOne         ; bit is 1, send a one
-    ; bit 2
-    rlf     AddrByte, F     ; Shift out MSB.. C = MSB
-    btfss   CARRY           ; if bit is 1, skip next instr.
-    call    SendZero        ; bit is 0, send a zero
-    btfsc   CARRY
-    call    SendOne         ; bit is 1, send a one
-    ; bit 1
-    rlf     AddrByte, F     ; Shift out MSB.. C = MSB
-    btfss   CARRY           ; if bit is 1, skip next instr.
-    call    SendZero        ; bit is 0, send a zero
-    btfsc   CARRY
-    call    SendOne         ; bit is 1, send a one
-    ; bit 0
-    rlf     AddrByte, F     ; Shift out MSB.. C = MSB
-    btfss   CARRY           ; if bit is 1, skip next instr.
-    call    SendZero        ; bit is 0, send a zero
-    btfsc   CARRY
-    call    SendOne         ; bit is 1, send a one
-
+decrement_input:    
+    movf Input,W
     
-    ; SEND DATA
-    ; Shift Out DataByte
-    ; bit 5
-    rlf     DataByte, F     ; Shift out MSB.. C = MSB
-    btfss   CARRY           ; if bit is 1, skip next instr.
-    call    SendZero        ; bit is 0, send a zero
-    btfsc   CARRY
-    call    SendOne         ; bit is 1, send a one
-    ; bit 4
-    rlf     DataByte, F     ; Shift out MSB.. C = MSB
-    btfss   CARRY           ; if bit is 1, skip next instr.
-    call    SendZero        ; bit is 0, send a zero
-    btfsc   CARRY
-    call    SendOne         ; bit is 1, send a one
-    ; bit 3
-    rlf     DataByte, F     ; Shift out MSB.. C = MSB
-    btfss   CARRY           ; if bit is 1, skip next instr.
-    call    SendZero        ; bit is 0, send a zero
-    btfsc   CARRY
-    call    SendOne         ; bit is 1, send a one
-    ; bit 2
-    rlf     DataByte, F     ; Shift out MSB.. C = MSB
-    btfss   CARRY           ; if bit is 1, skip next instr.
-    call    SendZero        ; bit is 0, send a zero
-    btfsc   CARRY
-    call    SendOne         ; bit is 1, send a one
-    ; bit 1
-    rlf     DataByte, F     ; Shift out MSB.. C = MSB
-    btfss   CARRY           ; if bit is 1, skip next instr.
-    call    SendZero        ; bit is 0, send a zero
-    btfsc   CARRY
-    call    SendOne         ; bit is 1, send a one
-    ; bit 0
-    rlf     DataByte, F     ; Shift out MSB.. C = MSB
-    btfss   CARRY           ; if bit is 1, skip next instr.
-    call    SendZero        ; bit is 0, send a zero
-    btfsc   CARRY
-    call    SendOne         ; bit is 1, send a one  
+    xorlw INP1_CMD
+    btfss STATUS,ZERO_BIT
+    goto check_input2_dec
+    movlw INP3_CMD
+    goto end_decrement
+    check_input2_dec:
+    xorlw INP2_CMD
+    btfss STATUS,ZERO_BIT
+    goto check_input3_dec
+    movlw INP1_CMD
+    goto end_decrement
+    check_input3_dec:
+    xorlw INP3_CMD
+    btfsc STATUS,ZERO_BIT
+    movlw INP2_CMD
     
-    ; 25 ms passed
-
-    ; Delay remaining time so that repetitive calls to SendRC5
-    ; occur at 114ms intervals as per RC5 spec.
-
-    ; 114-25 = 89ms
-    bcf     OUTPUT_LED          ; Set output low for off time
-
-    movlw   89
-    movwf   Delay_Count2        ; outer loop delay counter
-
-    call    delay_1ms           ; Delay 1ms ea. time through loop
-    decfsz  Delay_Count2, F     ; Go through loop
-    goto    $-2                 ; if count not 0, keep looping
-
-
-    return                      ; Return from SendRC5 routine
-
-
-
-;------------------------------------------------------------------
-;  SendOne
-;
-;       A "1" in Manchester goes from Low-High over the bit period
-;   Timing based off 4MHz internal clock with 1MHz Instruction
-;   cycle. During the pulsing period, the carrier frequency should
-;   be 36kHz, and the duty cycle of the carrier should be about 1/4.
-;------------------------------------------------------------------
-SendOne:
-
-    ; LOW HALF (889us = 889 instr cycles)
-    bcf     OUTPUT_LED          ; Turn off LED
-        ; 1 --> 888us           ; (-1) instr cycle from total needed
-    ;
-    movlw   0xFF                ; (-1) Move 0xFF (255) into w
-    movwf   Delay_Count         ; (-1) Move w -> Delay_Count
-    decfsz  Delay_Count, F      ; (-1) Decrement F, skip if result = 0
-    goto    $-1                 ; (-2) Go back 1, keep decrementing until 0
-        ; Loop Eq. = 3*N-1 cycles
-        ; 3*254 = 764us completed in loop, + 3 cycles beforehand..
-        ; 767us completed --> 122us to go.
-    ;
-    movlw   39               ; -1 (Load to finish time accurately)
-    movwf   Delay_Count         ; -1
-    decfsz  Delay_Count, F      ; -1
-    goto    $-1                 ; -2
-        ; NOTE: there are two cycles following this 
-        ;       before pulsing will start.. so take 2 cycles off desired
-        ; 1 + 1 + 3*N-1 = 122 - 2 --> N=39.66
-        ; Choose N = 39, gives 116 cycles in loop, +2 setup, +2 lagging
-        ; = 116+2+2 = 120   -->   need 2 nops, or 1 goto $+1
-    goto    $+1                 ; -2
-
-    ;
-    ; HIGH HALF (889us)
-    ; Toggle 7us on, 21us off for 35.7kHz (~36kHz) for the duration
-    ; Pulsing 7 on, 21 off yields a 1/4 time duty cycle for carrier.
-    ; Has 32 pulses of these periods 32*28us = 896us (~889us)
-    ;
-    ; These two clock cycles contribute to LOW TIME
-    movlw   32               ; -1    (2 addit'l low cycles on low time)
-    movwf   Delay_Count2        ; -1    num pulses counter
-
-CarrierLoopOne:
-    bsf     OUTPUT_LED          ; -1    (BEGIN ON TIME)
-    goto    $+1                 ; -2us
-    goto    $+1                 ; -2us
-    goto    $+1                 ; -2us  delayed 7us
-    bcf     OUTPUT_LED          ; -1    (BEGIN OFF TIME)
-    movlw   5                ; -1 (Load to finish time accurately)
-    movwf   Delay_Count         ; -1
-    decfsz  Delay_Count, F      ; -1
-    goto    $-1                 ; -2
-        ; 1 + 1 + 1 + 3*N-1 = 21-3  --> x = 5.33
-        ; Choose N=5, 1+1+1 + LOOP=14 =17 --> need 1 nop
-    nop
-    decfsz  Delay_Count2, F     ; -1  3us tacked on each pulse xcept last one
-    goto    CarrierLoopOne      ; -2  TAKE OFF OF ABOVE CALC
-
-    ; DONE Sending a one
-    return                      ; -2 return from subroutine
+    end_decrement:
+    movwf Input
+    return
     
-
-
-;------------------------------------------------------------------
-;  SendZero
-;
-;       A "0" in Manchester goes from High-Low over the bit period.
-;   The high period is a series of pulses of duty cycle 1/4 at a
-;   frequency of 36kHz.  This implementation yields 35.71kHz.
-;------------------------------------------------------------------
-SendZero:
-
-    ; HIGH HALF (889us)
-    ; Toggle 7us on, 21us off for 35.7kHz (~36kHz) for the duration
-    ; Pulsing 7 on, 21 off yields a 1/4 time duty cycle for carrier.
-    ; Has 32 pulses of these periods 32*28us = 896us (~889us)
-    ;
-    ; These two clock cycles contribute to LOW TIME
-    movlw   32               ; -1    (2 addit'l low cycles on low time)
-    movwf   Delay_Count2        ; -1    num pulses counter
-
-CarrierLoopZero:
-    bsf     OUTPUT_LED          ; -1    (BEGIN ON TIME)
-    goto    $+1                 ; -2us
-    goto    $+1                 ; -2us
-    goto    $+1                 ; -2us  delayed 7us
-    bcf     OUTPUT_LED          ; -1    (BEGIN OFF TIME)
-    movlw   5                ; -1 (Load to finish time accurately)
-    movwf   Delay_Count         ; -1
-    decfsz  Delay_Count, F      ; -1
-    goto    $-1                 ; -2
-        ; 1 + 1 + 1 + 3*N-1 = 21-3  --> x = 5.33
-        ; Choose N=5, 1+1+1 + LOOP=14 =17 --> need 1 nop
-    nop
-    decfsz  Delay_Count2, F     ; -1  3us tacked on each pulse xcept last one
-    goto    CarrierLoopZero     ; -2  TAKE OFF OF ABOVE CALC
-
-    ; Last pulse needs its off time 
-    ; that it misses from goto CarrierLoop
-    goto    $+1                 ; -2
-
-    ; LOW HALF (889us = 889 instr cycles)
-    bcf     OUTPUT_LED          ; Turn off LED
-        ; 1 --> 888us           ; (-1) instr cycle from total needed
-    ;
-    movlw   0xFF                ; (-1) Move 0xFF (255) into w
-    movwf   Delay_Count         ; (-1) Move w -> Delay_Count
-    decfsz  Delay_Count, F      ; (-1) Decrement F, skip if result = 0
-    goto    $-1                 ; (-2) Go back 1, keep decrementing until 0
-        ; Loop Eq. = 3*N-1 cycles
-        ; 3*254 = 764us completed in loop, + 3 cycles beforehand..
-        ; 767us completed --> 122us to go.
-    ;
-    movlw   39               ; -1 (Load to finish time accurately)
-    movwf   Delay_Count         ; -1
-    decfsz  Delay_Count, F      ; -1
-    goto    $-1                 ; -2
-        ; NOTE: there are two cycles following this  (return)
-        ;       before next bit may be sent.
-        ; 1 + 1 + 3*N-1 = 122 - 2 --> N=39.66
-        ; Choose N = 39, gives 116 cycles in loop, +2 setup, +2 lagging
-        ; = 116+2+2 = 120   -->   return finishes the last 2 instr cycl.
-
-    return                      ; -2
+    
+increment_input:
+    movf Input,W
+    
+    xorlw INP1_CMD
+    btfss STATUS,ZERO_BIT
+    goto check_input2_inc
+    movlw INP2_CMD
+    goto end_inc
+    check_input2_inc:
+    xorlw INP2_CMD
+    btfss STATUS,ZERO_BIT
+    goto check_input3_inc
+    movlw INP3_CMD
+    goto end_inc
+    check_input3_inc:
+    xorlw INP3_CMD
+    btfsc STATUS,ZERO_BIT
+    movlw INP1_CMD
+    
+    end_inc:
+    movwf Input
+    return
 
 
 ;--------------------------------------------------------------------
