@@ -72,6 +72,7 @@ wreg_temp		 EQU 0x71
 ; Register Assignments
 Delay_Count		 EQU  0x23      ; Define registers for
 Delay_Count2		 EQU  0x24      ; delay routines
+Delay_Count3		 EQU  0x2C      ; delay routines
 
 DataByte		 EQU  0x25      ; Define a byte to use for RC5 Data
 AddrByte		 EQU  0x26      ; Define a byte to use for RC5 address
@@ -183,21 +184,25 @@ skip_volup:
     ; MUTE BUTTON
     ;
     ; Check if button is pushed down
-    movlw 0
-    movwf PressLengthCount
-    btfsc   BTTN_MUTE
-    goto    skip_mute           ; button is up, skip action code
-measure_mute_hold:
-    call    delay_10ms          ; 
-    incf    PressLengthCount
-    btfsc   BTTN_MUTE           ; check if button is still down 
-    goto    measure_mute_hold           ; bttn is up, skip action code (false indicator)
     
-    ; Detected the button as pressed.  Send keydown code.
-
-    ; Button's Action Code
-    ;
-    ; Repeatedly send RC5 transmission with toggle bit = 0.
+    btfsc   BTTN_MUTE
+    goto    skip_mute_and_power           ; button is up, skip action code
+    
+    movlw   0
+    movwf   PressLengthCount
+measure_mute_hold:    
+    call    delay_50ms           
+    incf    PressLengthCount
+    movlw   20 ;one second = 20*50ms
+    subwf   PressLengthCount, W
+    btfsc   CARRY   ;carry is 0 if the result of subtraction is negative - PressLengthCount is smaller than W - so have to execute MUTE   
+    goto    power_action
+    btfss   BTTN_MUTE                   ; check if button is still down 
+    goto    measure_mute_hold           ; bttn is still down, go back to measuring the duration of how long it's been pressed for
+    ; button is up - let's see how long it's been pressed for
+    ; the threshold is 1 second for POWER ON/OFF vs mute, which is short press. 1 second = 100 10ms increments
+    
+    
 mute_action:
     movlw   SYS_ADDRESS
     movwf   AddrByte            ; Load Device Address
@@ -205,10 +210,18 @@ mute_action:
     movwf   DataByte            ; Load Data byte with command
     
     call    SendNECCommand
-    btfss   BTTN_MUTE          ; On button release, send one toggle+
-    goto    mute_action        ; Keep sending RC5 code while bttn down
-
-skip_mute:
+    call    delay_500ms
+    goto    skip_mute_and_power
+    
+power_action:
+    movlw   SYS_ADDRESS
+    movwf   AddrByte            ; Load Device Address
+    movlw   POWER_CMD           
+    movwf   DataByte            ; Load Data byte with command
+    
+    call    SendNECCommand
+    call    delay_500ms
+skip_mute_and_power:
 
 
     ; INPUT DOWN BUTTON
@@ -228,6 +241,7 @@ inpdown_action:
     movwf   DataByte            ; Load Data byte with the new, changed input
     
     call    SendNECCommand
+    call    delay_500ms
     btfss   BTTN_INPDOWN          ; On button release, send one toggle+
     goto    inpdown_action        ; Keep sending RC5 code while bttn down
 
@@ -251,6 +265,7 @@ inpup_action:
     movwf   DataByte            ; Load Data byte with command
     
     call    SendNECCommand
+    call    delay_500ms
     btfss   BTTN_INPUP         ; Send button released.
 skip_inpup:
     BANKSEL(IOCCF)
@@ -465,11 +480,27 @@ delay_1ms:
 delay_10ms:
     movlw 10
     movwf Delay_Count2
-ms10_delay:
     call delay_1ms
     decfsz Delay_Count2,F
-    goto ms10_delay     
+    goto $-2     
     return
+    
+delay_50ms:
+    movlw 50
+    movwf Delay_Count2
+    call delay_1ms
+    decfsz Delay_Count2,F
+    goto $-2     
+    return
+    
+delay_500ms:
+    movlw 50
+    movwf Delay_Count3
+    call delay_10ms
+    decfsz Delay_Count3,F
+    goto $-2     
+    return    
+
 ;------------------------------------------------------------------
 ;  DebounceDelay
 ;
