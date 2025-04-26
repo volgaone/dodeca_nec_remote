@@ -79,16 +79,16 @@ ToggByte		 EQU  0x27      ; Define a byte to determine toggle low or high
 BitCount		 EQU  0x28      ; holds a bit counter as we iterate thru bits in a byte 
 NEC_byte		 EQU  0x29	; holds the byte to be sent over NEC protocol
 Input			 EQU  0x2A      ; current input; can be 1, 2 or 3 (corresponding to INPx_CMD)
-
+PressLengthCount	 EQU  0x2B      ; counts how long we hold the mute button for, in increments of 10ms
 ;------------------------------------------------------------------
 ;  PROGRAMME CODE
 ;------------------------------------------------------------------
 PSECT code, abs
   
- ResVctr:
-     goto	start			;
+ResVctr:
+    goto	start			;
      
-     ORG 0x0004		;
+    ORG 0x0004		;
 
 start:
     clrw                       		;Processor Reset vector
@@ -183,12 +183,16 @@ skip_volup:
     ; MUTE BUTTON
     ;
     ; Check if button is pushed down
+    movlw 0
+    movwf PressLengthCount
     btfsc   BTTN_MUTE
     goto    skip_mute           ; button is up, skip action code
-    call    DebounceDelay       ; Short debounce delay
+measure_mute_hold:
+    call    delay_10ms          ; 
+    incf    PressLengthCount
     btfsc   BTTN_MUTE           ; check if button is still down 
-    goto    skip_mute           ; bttn is up, skip action code (false indicator)
-
+    goto    measure_mute_hold           ; bttn is up, skip action code (false indicator)
+    
     ; Detected the button as pressed.  Send keydown code.
 
     ; Button's Action Code
@@ -260,44 +264,47 @@ skip_inpup:
     bcf PORTC, 0
     goto Main_Loop               ; forever run in loop
 
+;============================================
+; sub-routines
+    
 NECSendZero:
-movlw   23               ; -1    
-movwf   Delay_Count2        ; -1    num pulses counter
-call NECCarrierLoop
-bcf     OUTPUT_LED          ; -1    (BEGIN OFF TIME)
-movlw   176                ; +1 us
-movwf   Delay_Count         ; +1 
-decfsz  Delay_Count, F      ; Decrement F, skip if result = 0
-goto    $-1                 ; Go back 1, keep decrementing until     
-return
+    movlw   23                  ;    
+    movwf   Delay_Count2        ; pass the argument to NECCarrierLoop
+    call NECCarrierLoop
+    bcf     OUTPUT_LED          ; -1    (BEGIN OFF TIME)
+    movlw   176                 ; +1 us
+    movwf   Delay_Count         ; +1 
+    decfsz  Delay_Count, F      ; Decrement F, skip if result = 0
+    goto    $-1                 ; Go back 1, keep decrementing until     
+    return
     
     
 NECSendOne:
-movlw   23               ; -1    
-movwf   Delay_Count2        ; -1    num pulses counter
-call NECCarrierLoop
-call delay_1ms
-bcf     OUTPUT_LED          ; -1    (BEGIN OFF TIME)
-movlw   218                ; +1 us
-movwf   Delay_Count         ; +1 
-decfsz  Delay_Count, F      ; Decrement F, skip if result = 0
-goto    $-1                 ; Go back 1, keep decrementing until
-return    
+    movlw   23                  ;    
+    movwf   Delay_Count2        ; pass the argument to NECCarrierLoop
+    call NECCarrierLoop
+    call delay_1ms
+    bcf     OUTPUT_LED          ; -1    (BEGIN OFF TIME)
+    movlw   218                 ; +1 us
+    movwf   Delay_Count         ; +1 
+    decfsz  Delay_Count, F      ; Decrement F, skip if result = 0
+    goto    $-1                 ; Go back 1, keep decrementing until
+    return    
 
 Send9msLeadingPulse:
-movlw   255               ; -1    
-movwf   Delay_Count2        ; -1    num pulses counter
-call NECCarrierLoop
-movlw   93               ; -1    
-movwf   Delay_Count2        ; -1    num pulses counter    
-call NECCarrierLoop
-return
+    movlw   255               ; -1    
+    movwf   Delay_Count2        ; -1    num pulses counter
+    call NECCarrierLoop
+    movlw   93               ; -1    
+    movwf   Delay_Count2        ; -1    num pulses counter    
+    call NECCarrierLoop
+    return
     
 Send562usEndBurst:
-movlw   23               ; -1    
-movwf   Delay_Count2        ; -1    num pulses counter
-call NECCarrierLoop
-return
+    movlw   23               ; -1    
+    movwf   Delay_Count2        ; -1    num pulses counter
+    call NECCarrierLoop
+    return
     
 NECCarrierLoop:
     bsf     OUTPUT_LED          ; -1    (BEGIN ON TIME)
@@ -331,7 +338,7 @@ Delay4_5msSpace:
 SendNECbyte:
     movlw 8
     movwf BitCount
-    NEC_bit:
+NEC_bit:
     rrf     NEC_byte, F     ; Shift out MSB.. C = MSB
     btfss   CARRY           ; if bit is 1, skip next instr.
     call    NECSendZero        ; bit is 0, send a zero
@@ -360,13 +367,7 @@ SendNECCommand:
     movwf NEC_byte
     call SendNECbyte
     call Send562usEndBurst
-    ; insert 10ms delay between the commands
-    movlw 10
-    movwf Delay_Count2
-    extra_cmd_delay:
-    call delay_1ms
-    decfsz Delay_Count2,F
-    goto extra_cmd_delay 
+    call delay_10ms		; insert 10ms delay between the commands
     return
     
 decrement_input:    
@@ -377,18 +378,18 @@ decrement_input:
     goto check_input2_dec
     movlw INP3_CMD
     goto end_decrement
-    check_input2_dec:
+check_input2_dec:
     xorlw INP2_CMD
     btfss STATUS,ZERO_BIT
     goto check_input3_dec
     movlw INP1_CMD
     goto end_decrement
-    check_input3_dec:
+check_input3_dec:
     xorlw INP3_CMD
     btfsc STATUS,ZERO_BIT
     movlw INP2_CMD
     
-    end_decrement:
+end_decrement:
     movwf Input
     return
     
@@ -401,18 +402,18 @@ increment_input:
     goto check_input2_inc
     movlw INP2_CMD
     goto end_inc
-    check_input2_inc:
+check_input2_inc:
     xorlw INP2_CMD
     btfss STATUS,ZERO_BIT
     goto check_input3_inc
     movlw INP3_CMD
     goto end_inc
-    check_input3_inc:
+check_input3_inc:
     xorlw INP3_CMD
     btfsc STATUS,ZERO_BIT
     movlw INP1_CMD
     
-    end_inc:
+end_inc:
     movwf Input
     return
 
@@ -461,7 +462,14 @@ delay_1ms:
 
     return                      ; +2 Return program flow
 
-;
+delay_10ms:
+    movlw 10
+    movwf Delay_Count2
+ms10_delay:
+    call delay_1ms
+    decfsz Delay_Count2,F
+    goto ms10_delay     
+    return
 ;------------------------------------------------------------------
 ;  DebounceDelay
 ;
