@@ -374,6 +374,7 @@ SendNECCommand:
     comf AddrByte, W //logical NOT on AddrByte, transfer to working register
     movwf NEC_byte
     call SendNECbyte
+    call delay_50ms
     ;  send 2 data bytes, second one being logical inverse of the first
     movf DataByte,W
     movwf NEC_byte
@@ -387,19 +388,20 @@ SendNECCommand:
     
 decrement_input:    
     movf Input,W
-    
     xorlw INP1_CMD
     btfss STATUS,ZERO_BIT
     goto check_input2_dec
     movlw INP3_CMD
     goto end_decrement
 check_input2_dec:
+    movf Input,W
     xorlw INP2_CMD
     btfss STATUS,ZERO_BIT
     goto check_input3_dec
     movlw INP1_CMD
     goto end_decrement
 check_input3_dec:
+    movf Input,W
     xorlw INP3_CMD
     btfsc STATUS,ZERO_BIT
     movlw INP2_CMD
@@ -411,19 +413,20 @@ end_decrement:
     
 increment_input:
     movf Input,W
-    
     xorlw INP1_CMD
     btfss STATUS,ZERO_BIT
     goto check_input2_inc
     movlw INP2_CMD
     goto end_inc
 check_input2_inc:
+    movf Input,W
     xorlw INP2_CMD
     btfss STATUS,ZERO_BIT
     goto check_input3_inc
     movlw INP3_CMD
     goto end_inc
 check_input3_inc:
+    movf Input,W
     xorlw INP3_CMD
     btfsc STATUS,ZERO_BIT
     movlw INP1_CMD
