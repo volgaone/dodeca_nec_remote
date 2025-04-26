@@ -30,12 +30,12 @@ ifeq ($(TYPE_IMAGE), DEBUG_RUN)
 IMAGE_TYPE=debug
 OUTPUT_SUFFIX=hex
 DEBUGGABLE_SUFFIX=elf
-FINAL_IMAGE=${DISTDIR}/dodeca_rc5_asm.X.${IMAGE_TYPE}.${OUTPUT_SUFFIX}
+FINAL_IMAGE=${DISTDIR}/dodeca_nec_asm.X.${IMAGE_TYPE}.${OUTPUT_SUFFIX}
 else
 IMAGE_TYPE=production
 OUTPUT_SUFFIX=hex
 DEBUGGABLE_SUFFIX=elf
-FINAL_IMAGE=${DISTDIR}/dodeca_rc5_asm.X.${IMAGE_TYPE}.${OUTPUT_SUFFIX}
+FINAL_IMAGE=${DISTDIR}/dodeca_nec_asm.X.${IMAGE_TYPE}.${OUTPUT_SUFFIX}
 endif
 
 ifeq ($(COMPARE_BUILD), true)
@@ -51,17 +51,17 @@ OBJECTDIR=build/${CND_CONF}/${IMAGE_TYPE}
 DISTDIR=dist/${CND_CONF}/${IMAGE_TYPE}
 
 # Source Files Quoted if spaced
-SOURCEFILES_QUOTED_IF_SPACED=DRC1.s
+SOURCEFILES_QUOTED_IF_SPACED=DRC1_nec.s
 
 # Object Files Quoted if spaced
-OBJECTFILES_QUOTED_IF_SPACED=${OBJECTDIR}/DRC1.o
-POSSIBLE_DEPFILES=${OBJECTDIR}/DRC1.o.d
+OBJECTFILES_QUOTED_IF_SPACED=${OBJECTDIR}/DRC1_nec.o
+POSSIBLE_DEPFILES=${OBJECTDIR}/DRC1_nec.o.d
 
 # Object Files
-OBJECTFILES=${OBJECTDIR}/DRC1.o
+OBJECTFILES=${OBJECTDIR}/DRC1_nec.o
 
 # Source Files
-SOURCEFILES=DRC1.s
+SOURCEFILES=DRC1_nec.s
 
 
 
@@ -82,28 +82,28 @@ FIXDEPS=fixDeps
 ifneq ($(INFORMATION_MESSAGE), )
 	@echo $(INFORMATION_MESSAGE)
 endif
-	${MAKE}  -f nbproject/Makefile-default.mk ${DISTDIR}/dodeca_rc5_asm.X.${IMAGE_TYPE}.${OUTPUT_SUFFIX}
+	${MAKE}  -f nbproject/Makefile-default.mk ${DISTDIR}/dodeca_nec_asm.X.${IMAGE_TYPE}.${OUTPUT_SUFFIX}
 
 MP_PROCESSOR_OPTION=PIC16F15225
-FINAL_IMAGE_NAME_MINUS_EXTENSION=${DISTDIR}/dodeca_rc5_asm.X.${IMAGE_TYPE}
+FINAL_IMAGE_NAME_MINUS_EXTENSION=${DISTDIR}/dodeca_nec_asm.X.${IMAGE_TYPE}
 # ------------------------------------------------------------------------------------
 # Rules for buildStep: pic-as-assembler
 ifeq ($(TYPE_IMAGE), DEBUG_RUN)
-${OBJECTDIR}/DRC1.o: DRC1.s  nbproject/Makefile-${CND_CONF}.mk 
+${OBJECTDIR}/DRC1_nec.o: DRC1_nec.s  nbproject/Makefile-${CND_CONF}.mk 
 	@${MKDIR} "${OBJECTDIR}" 
-	@${RM} ${OBJECTDIR}/DRC1.o 
+	@${RM} ${OBJECTDIR}/DRC1_nec.o 
 	${MP_AS} -mcpu=PIC16F15225 -c \
-	-o ${OBJECTDIR}/DRC1.o \
-	DRC1.s \
+	-o ${OBJECTDIR}/DRC1_nec.o \
+	DRC1_nec.s \
 	 -D__DEBUG=1   -mdfp="${DFP_DIR}/xc8"  -msummary=+mem,-psect,-class,-hex,-file,-sha1,-sha256,-xml,-xmlfull -fmax-errors=20 -mwarn=0 -xassembler-with-cpp
 	
 else
-${OBJECTDIR}/DRC1.o: DRC1.s  nbproject/Makefile-${CND_CONF}.mk 
+${OBJECTDIR}/DRC1_nec.o: DRC1_nec.s  nbproject/Makefile-${CND_CONF}.mk 
 	@${MKDIR} "${OBJECTDIR}" 
-	@${RM} ${OBJECTDIR}/DRC1.o 
+	@${RM} ${OBJECTDIR}/DRC1_nec.o 
 	${MP_AS} -mcpu=PIC16F15225 -c \
-	-o ${OBJECTDIR}/DRC1.o \
-	DRC1.s \
+	-o ${OBJECTDIR}/DRC1_nec.o \
+	DRC1_nec.s \
 	  -mdfp="${DFP_DIR}/xc8"  -msummary=+mem,-psect,-class,-hex,-file,-sha1,-sha256,-xml,-xmlfull -fmax-errors=20 -mwarn=0 -xassembler-with-cpp
 	
 endif
@@ -111,16 +111,16 @@ endif
 # ------------------------------------------------------------------------------------
 # Rules for buildStep: pic-as-linker
 ifeq ($(TYPE_IMAGE), DEBUG_RUN)
-${DISTDIR}/dodeca_rc5_asm.X.${IMAGE_TYPE}.${OUTPUT_SUFFIX}: ${OBJECTFILES}  nbproject/Makefile-${CND_CONF}.mk    
+${DISTDIR}/dodeca_nec_asm.X.${IMAGE_TYPE}.${OUTPUT_SUFFIX}: ${OBJECTFILES}  nbproject/Makefile-${CND_CONF}.mk    
 	@${MKDIR} ${DISTDIR} 
 	${MP_LD} -mcpu=PIC16F15225 ${OBJECTFILES_QUOTED_IF_SPACED} \
-	-o ${DISTDIR}/dodeca_rc5_asm.X.${IMAGE_TYPE}.${OUTPUT_SUFFIX} \
+	-o ${DISTDIR}/dodeca_nec_asm.X.${IMAGE_TYPE}.${OUTPUT_SUFFIX} \
 	 -D__DEBUG=1   -mdfp="${DFP_DIR}/xc8"  -msummary=+mem,-psect,-class,-hex,-file,-sha1,-sha256,-xml,-xmlfull -mcallgraph=std -Wl,-Map=${FINAL_IMAGE_NAME_MINUS_EXTENSION}.map -mno-download-hex
 else
-${DISTDIR}/dodeca_rc5_asm.X.${IMAGE_TYPE}.${OUTPUT_SUFFIX}: ${OBJECTFILES}  nbproject/Makefile-${CND_CONF}.mk   
+${DISTDIR}/dodeca_nec_asm.X.${IMAGE_TYPE}.${OUTPUT_SUFFIX}: ${OBJECTFILES}  nbproject/Makefile-${CND_CONF}.mk   
 	@${MKDIR} ${DISTDIR} 
 	${MP_LD} -mcpu=PIC16F15225 ${OBJECTFILES_QUOTED_IF_SPACED} \
-	-o ${DISTDIR}/dodeca_rc5_asm.X.${IMAGE_TYPE}.${OUTPUT_SUFFIX} \
+	-o ${DISTDIR}/dodeca_nec_asm.X.${IMAGE_TYPE}.${OUTPUT_SUFFIX} \
 	  -mdfp="${DFP_DIR}/xc8"  -msummary=+mem,-psect,-class,-hex,-file,-sha1,-sha256,-xml,-xmlfull -mcallgraph=std -Wl,-Map=${FINAL_IMAGE_NAME_MINUS_EXTENSION}.map -mno-download-hex
 endif
 

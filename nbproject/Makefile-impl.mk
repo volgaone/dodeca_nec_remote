@@ -24,7 +24,7 @@ CLEAN_SUBPROJECTS=${CLEAN_SUBPROJECTS_${SUBPROJECTS}}
 
 
 # Project Name
-PROJECTNAME=dodeca_rc5_asm.X
+PROJECTNAME=dodeca_nec_asm.X
 
 # Active Configuration
 DEFAULTCONF=default
