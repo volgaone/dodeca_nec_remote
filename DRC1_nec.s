@@ -374,7 +374,6 @@ SendNECCommand:
     comf AddrByte, W //logical NOT on AddrByte, transfer to working register
     movwf NEC_byte
     call SendNECbyte
-    call delay_50ms
     ;  send 2 data bytes, second one being logical inverse of the first
     movf DataByte,W
     movwf NEC_byte
